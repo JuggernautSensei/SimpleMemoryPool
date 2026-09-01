@@ -1,4 +1,4 @@
-# Simple Implemented Memory Pool
+# Simple Memory Pool
 
 C++로 짠 간단한 고정길이 블록 메모리 풀 구현. 헤더 파일만 있으면 바로 쓸 수 있다.
 
