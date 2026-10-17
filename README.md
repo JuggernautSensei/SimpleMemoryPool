@@ -1,4 +1,4 @@
-[# SimpleMemoryPool
+# SimpleMemoryPool
 
 메모리 풀의 동작 원리를 설명하는 포스팅과 함께 작성한 **C++20 헤더 전용 메모리 풀 구현**입니다.
 
