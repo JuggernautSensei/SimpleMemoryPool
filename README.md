@@ -9,7 +9,6 @@
 
 - [소개](#소개)
 - [사용 예제](#사용-예제)
-- [적용 방법](#적용-방법)
 - [성능 비교](#성능-비교)
 - [문서](#문서)
 
@@ -54,26 +53,6 @@ int main()
 현재 구현은 빈 블록 안에 포인터를 기록하므로 타입의 크기와 정렬이 포인터를 담기에 충분해야 합니다. 예제의 `alignas(void*)`는 이 조건을 맞추기 위한 것입니다. `ObjectPool<T>`가 작은 타입의 크기·정렬을 자동으로 보정하지는 않습니다.
 
 객체 풀은 살아 있는 객체 목록을 추적하지 않습니다. 생성한 객체는 풀 소멸 전에 `Delete()`해야 하며, 풀 자체의 소멸만으로 남은 객체의 소멸자가 호출되지는 않습니다.
-
-## 적용 방법
-
-필요한 헤더를 포함하고 저장소 루트를 헤더 탐색 경로에 추가하면 됩니다. 외부 라이브러리나 별도의 링크 과정은 필요하지 않습니다. 공통 정렬 계산과 플랫폼별 메모리 할당은 [`Base.h`](Base.h)에 있습니다.
-
-요구 사항은 **C++20 이상**과 MSVC 또는 `posix_memalign()`을 지원하는 POSIX 환경입니다. MSVC에서는 `_aligned_malloc/_aligned_free`, 그 외에는 `posix_memalign/free`를 사용합니다.
-
-위 예제를 저장소 루트에 `main.cpp`로 저장했다면, Windows의 **x64 Native Tools Command Prompt for VS**에서 다음과 같이 실행할 수 있습니다.
-
-```bat
-cl /std:c++20 /EHsc /W4 /I . main.cpp /Fe:example.exe
-example.exe
-```
-
-Linux/GCC에서는 다음 명령을 사용합니다.
-
-```sh
-g++ -std=c++20 -Wall -Wextra -Wpedantic -I . main.cpp -o example
-./example
-```
 
 ### 사용 조건
 
