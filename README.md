@@ -6,7 +6,7 @@
 
 이 문서는 포스팅의 요약입니다. 구현 과정과 코드에 대한 자세한 설명은 아래 글에서 확인할 수 있습니다.
 
-📖 [메모리 풀과 간단한 구현](https://purple-jingle-7d5.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
+📖 [메모리 풀과 간단한 구현]([https://purple-jingle-7d5.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link))
 
 ## 핵심 원리
 
