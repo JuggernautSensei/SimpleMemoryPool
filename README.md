@@ -88,12 +88,21 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic -I . main.cpp -o example
 
 ## 성능 비교
 
-할당 후 일괄 해제, 즉시 반납 반복, 랜덤 할당·해제 등 여러 패턴에서 `malloc/free`와 비교했습니다. MSVC x64 Release, 32바이트 블록, 풀당 127블록으로 측정한 결과와 시나리오별 설명은 [포스팅의 성능 비교](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에서 볼 수 있습니다.
+할당 패턴을 바꾸어 가며 `malloc/free`와 비교했습니다. 아래는 MSVC x64 Release, 32바이트 블록, 풀당 127블록으로 측정해 포스팅에 기록한 결과입니다.
 
-벤치마크 소스는 현재 저장소에 포함되어 있지 않습니다. 기록된 수치는 당시 환경의 결과이며, 할당 패턴과 실행 환경에 따라 달라집니다.
+| 할당 패턴 | malloc/free | FixedBlockPool | 배율 |
+| --- | ---: | ---: | ---: |
+| 200만 회 할당 후 일괄 해제 | 144.851 ms | 18.704 ms | 7.74배 |
+| 할당 직후 해제 500만 회 반복 | 157.437 ms | 2.950 ms | 53.38배 |
+| 랜덤 할당·해제 혼합, 동시 생존 1만 개 | 145.569 ms | 47.004 ms | 3.10배 |
+| 사전 힙 파편화 + 프레임 단위 생성·즉시 소멸 | 136.961 ms | 6.558 ms | 20.88배 |
+
+배율은 `malloc/free`의 측정 시간을 `FixedBlockPool`의 측정 시간으로 나눈 값입니다. 자세한 시나리오와 결과 해석은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에 정리했습니다.
+
+벤치마크 소스는 현재 저장소에 포함되어 있지 않습니다. 위 수치는 당시 환경의 결과이며, 할당 패턴과 실행 환경에 따라 달라집니다.
 
 ## 문서
 
-[**메모리 풀에 대한 기본적인 개념과 구현 →**](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
+[**메모리 풀에 대한 기본적인 개념과 구현**](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
 
 `FixedBlockPool`의 멤버와 `Alloc()`·`Free()`를 차례로 살펴보고, 헤더와 블록의 정렬을 계산하는 과정을 설명한 글입니다. `ObjectPool`과 `MemoryArena`에 대한 설명도 함께 담았습니다.
