@@ -105,4 +105,3 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic -I . main.cpp -o example
 - **할당 실패:** 메모리 할당 실패에 대한 복구 처리를 제공하지 않습니다.
 
 `Reset()` 또는 풀 소멸 이후에는 기존에 반환받은 포인터를 사용할 수 없습니다.
-](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
