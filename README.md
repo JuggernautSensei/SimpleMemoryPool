@@ -1,4 +1,4 @@
-# SimpleMemoryPool
+[# SimpleMemoryPool
 
 메모리 풀의 동작 원리를 설명하는 포스팅과 함께 작성한 **C++20 헤더 전용 메모리 풀 구현**입니다.
 
@@ -6,7 +6,7 @@
 
 이 문서는 포스팅의 요약입니다. 구현 과정과 코드에 대한 자세한 설명은 아래 글에서 확인할 수 있습니다.
 
-📖 [메모리 풀과 간단한 구현]([https://purple-jingle-7d5.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link))
+📖 [메모리 풀과 간단한 구현](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
 
 ## 핵심 원리
 
@@ -105,3 +105,4 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic -I . main.cpp -o example
 - **할당 실패:** 메모리 할당 실패에 대한 복구 처리를 제공하지 않습니다.
 
 `Reset()` 또는 풀 소멸 이후에는 기존에 반환받은 포인터를 사용할 수 없습니다.
+](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
