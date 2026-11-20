@@ -7,81 +7,30 @@
   <img src="https://img.shields.io/badge/header--only-library-green" alt="Header-only">
 </p>
 
+메모리 풀의 할당·반납·재사용을 살펴보기 위한 C++20 헤더 전용 구현입니다. 저수준 메모리 관리에 대한 이해를 점검하고, 메모리를 확보할 때부터 다음 블록의 위치를 계산할 때까지 정렬을 직접 적용해 보려고 작성했습니다.
+
 ## Contents
 
-- [프로젝트 소개](#프로젝트-소개)
-- [고정 크기 블록 재사용](#고정-크기-블록-재사용)
-- [순차 할당과 일괄 해제](#순차-할당과-일괄-해제)
+- [소개](#소개)
+- [사용 예제](#사용-예제)
 - [성능 비교](#성능-비교)
-- [빌드 및 실행](#빌드-및-실행)
+- [문서](#문서)
 
-## 프로젝트 소개
+## 소개
 
-크기가 같은 객체를 만들고 지우는 작업에는 고정 크기 블록 풀과 객체 풀을 쓸 수 있습니다. 객체 풀은 생성자에 인자를 전달해 객체를 만들고, 사용이 끝나면 소멸자를 호출해 그 자리를 다음 객체에 돌려줍니다. 크기가 다른 임시 데이터를 한꺼번에 정리할 때는 메모리 아레나를 사용합니다.
+같은 크기의 메모리를 반복해서 사용한다면, 큰 메모리 영역을 확보한 뒤 블록으로 나누어 쓸 수 있습니다. 사용이 끝난 블록은 풀에 반납하고 다음 요청에서 다시 사용합니다. 이 과정을 직접 따라가 볼 수 있도록 고정 크기 블록 풀과 이를 활용한 객체 풀, 순차 할당용 아레나를 담았습니다.
 
-## 고정 크기 블록 재사용
+- [`FixedBlockPool`](FixedBlockPool.h): 같은 크기의 블록을 할당하고 반납합니다. 첫 할당 요청에서 풀 메모리를 확보하며, 반납된 블록이 없고 현재 풀도 다 썼다면 새 풀을 연결합니다.
+- [`ObjectPool<T>`](ObjectPool.h): `FixedBlockPool`에 객체 생성·소멸을 연결한 클래스입니다. `New()`는 생성자 인자를 전달해 객체를 만들고, `Delete()`는 소멸자를 호출한 뒤 블록을 반납합니다.
+- [`MemoryArena`](MemoryArena.h): 요청한 크기만큼 메모리를 순차적으로 할당합니다. 개별 반납 없이 `Reset()` 또는 소멸 시 확보한 풀을 모두 해제합니다. PBRT에서 본 구조를 참고해 만들었습니다.
 
 `FixedBlockPool::Free()`는 반납된 블록의 앞부분에 다음 빈 블록의 주소를 기록합니다. 이 연결을 빈 블록 목록인 free list로 관리하고, `Alloc()`에서 가장 최근에 반납한 블록부터 꺼내 씁니다. 블록 자체를 목록의 노드로 사용하므로 연결 정보를 위한 별도 할당이 필요하지 않습니다. 풀의 메모리는 `Reset()`이나 소멸 시 해제합니다.
 
 정렬은 풀을 확보할 때와 블록을 나눌 때 모두 고려했습니다. 헤더 뒤에는 첫 블록의 정렬을 맞추는 패딩을 두고, 블록 간 간격도 정렬 단위의 배수로 맞춥니다. 따라서 커서를 다음 블록으로 옮겨도 정렬 조건이 유지됩니다. 구체적인 메모리 배치와 계산 과정은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에서 설명합니다.
 
-## 순차 할당과 일괄 해제
+## 사용 예제
 
-한 작업에서 크기가 다른 임시 데이터를 여러 번 할당하고 마지막에 함께 해제한다면, 각 데이터가 차지한 자리를 따로 반납할 필요가 없습니다. 메모리 아레나는 첫 요청에서 풀 하나를 확보합니다. 이후에는 요청한 정렬에 맞춰 시작 주소를 잡고, 요청한 크기만큼 다음 할당 위치를 옮깁니다.
-
-현재 풀에 공간이 부족하면 새 풀을 확보해 기존 풀과 연결합니다. 이전 풀에 할당한 데이터는 그 자리에 남습니다. `Reset()`을 호출하거나 아레나가 소멸하면 연결된 풀을 차례로 해제합니다.
-
-## 성능 비교
-
-할당 패턴을 바꾸어 가며 `malloc/free`와 비교했습니다. 아래는 포스팅에 기록한 기존 측정 결과입니다.
-
-- 블록 크기: 32바이트
-- 풀당 블록 수: 127개
-
-<table width="100%">
-  <thead>
-    <tr>
-      <th align="left">할당 패턴</th>
-      <th align="right">malloc/free</th>
-      <th align="right">FixedBlockPool</th>
-      <th align="right">배율</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="left">200만 회 할당 후 일괄 해제</td>
-      <td align="right">144.851 ms</td>
-      <td align="right">18.704 ms</td>
-      <td align="right">7.74배</td>
-    </tr>
-    <tr>
-      <td align="left">할당 직후 해제 500만 회 반복</td>
-      <td align="right">157.437 ms</td>
-      <td align="right">2.950 ms</td>
-      <td align="right">53.37배</td>
-    </tr>
-    <tr>
-      <td align="left">랜덤 할당·해제 혼합, 동시 생존 1만 개</td>
-      <td align="right">145.569 ms</td>
-      <td align="right">47.004 ms</td>
-      <td align="right">3.10배</td>
-    </tr>
-    <tr>
-      <td align="left">사전 힙 파편화 + 프레임 단위 생성·즉시 소멸</td>
-      <td align="right">136.961 ms</td>
-      <td align="right">6.558 ms</td>
-      <td align="right">20.88배</td>
-    </tr>
-  </tbody>
-</table>
-
-배율은 `malloc/free`의 측정 시간을 `FixedBlockPool`의 측정 시간으로 나눈 값입니다. 상세 시나리오와 결과에 대한 해석은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에 정리했습니다.
-
-## 빌드 및 실행
-
-C++20 컴파일러가 필요합니다. 다음은 Windows의 Visual Studio 개발자 명령 프롬프트에서 실행하는 예입니다.
-
-1. 저장소의 헤더가 있는 폴더에 다음 예제를 `main.cpp`로 저장합니다.
+헤더 전용이라 저장소의 헤더를 프로젝트에 추가하고 `ObjectPool.h`를 include하면 됩니다. `ObjectPool`을 사용하면 메모리 확보와 함께 객체를 생성할 수 있습니다. 아래 예제는 `Particle`을 하나 생성해 사용한 뒤, 소멸시키고 그 블록을 풀에 반납합니다.
 
 ```cpp
 #include <cstdio>
@@ -105,13 +54,59 @@ int main()
 }
 ```
 
-2. 같은 폴더에서 예제를 빌드하고 실행합니다.
-
-   ```cmd
-   cl /nologo /std:c++20 /EHsc main.cpp
-   main.exe
-   ```
-
 빈 블록에는 연결 포인터를 기록하므로 포인터가 들어갈 크기와 정렬이 필요합니다. 예제의 `alignas(void*)`는 이 조건을 맞추기 위한 것입니다. `ObjectPool<T>`는 `sizeof(T)`와 `alignof(T)`를 그대로 기반 풀에 전달하며, 작은 타입의 크기나 정렬을 자동으로 보정하지 않습니다.
 
 `New()`로 만든 객체는 풀 소멸 전에 `Delete()`해야 합니다. 객체 풀은 살아 있는 객체 목록을 추적하지 않으므로, 풀을 소멸시켜도 남은 객체의 소멸자가 자동으로 호출되지는 않습니다.
+
+## 성능 비교
+
+할당 패턴을 바꾸어 가며 `malloc/free`와 비교했습니다. 아래는 포스팅에 기록한 기존 측정 결과입니다.
+
+- 컴파일 환경: MSVC, x64 Release
+- 블록 크기: 32바이트
+- 풀당 블록 수: 127개
+
+<table width="100%">
+  <thead>
+    <tr>
+      <th align="left">할당 패턴</th>
+      <th align="right">malloc/free</th>
+      <th align="right">FixedBlockPool</th>
+      <th align="right">배율</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="left">200만 회 할당 후 일괄 해제</td>
+      <td align="right">144.851 ms</td>
+      <td align="right">18.704 ms</td>
+      <td align="right">7.74배</td>
+    </tr>
+    <tr>
+      <td align="left">할당 직후 해제 500만 회 반복</td>
+      <td align="right">157.437 ms</td>
+      <td align="right">2.950 ms</td>
+      <td align="right">53.38배</td>
+    </tr>
+    <tr>
+      <td align="left">랜덤 할당·해제 혼합, 동시 생존 1만 개</td>
+      <td align="right">145.569 ms</td>
+      <td align="right">47.004 ms</td>
+      <td align="right">3.10배</td>
+    </tr>
+    <tr>
+      <td align="left">사전 힙 파편화 + 프레임 단위 생성·즉시 소멸</td>
+      <td align="right">136.961 ms</td>
+      <td align="right">6.558 ms</td>
+      <td align="right">20.88배</td>
+    </tr>
+  </tbody>
+</table>
+
+배율은 `malloc/free`의 측정 시간을 `FixedBlockPool`의 측정 시간으로 나눈 값입니다. 상세 시나리오와 결과에 대한 해석은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에 정리했습니다.
+
+## 문서
+
+메모리 풀의 기본 개념부터 `FixedBlockPool`의 멤버와 할당·반납 코드, 정렬 계산을 차례로 살펴본 글입니다. `ObjectPool`과 `MemoryArena`에 대한 설명도 함께 담았습니다.
+
+[메모리 풀에 대한 기본적인 개념과 구현](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
