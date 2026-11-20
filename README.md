@@ -1,7 +1,11 @@
-# SimpleMemoryPool
+<h1 align="center">SimpleMemoryPool</h1>
 
-![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus)
-![Header-only](https://img.shields.io/badge/header--only-library-green)
+<p align="center">C++20으로 만든 헤더 전용 메모리 풀</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C++-20-00599C?logo=cplusplus&logoColor=white" alt="C++20">
+  <img src="https://img.shields.io/badge/header--only-library-green" alt="Header-only">
+</p>
 
 메모리 풀의 할당·반납·재사용을 살펴보기 위한 C++20 헤더 전용 구현입니다. 저수준 메모리 관리에 대한 이해를 점검하고, 메모리를 확보할 때부터 다음 블록의 위치를 계산할 때까지 정렬을 직접 적용해 보려고 작성했습니다.
 
@@ -16,9 +20,9 @@
 
 같은 크기의 메모리를 반복해서 사용한다면, 큰 메모리 영역을 확보한 뒤 블록으로 나누어 쓸 수 있습니다. 사용이 끝난 블록은 풀에 반납하고 다음 요청에서 다시 사용합니다. 이 과정을 직접 따라가 볼 수 있도록 고정 크기 블록 풀과 이를 활용한 객체 풀, 순차 할당용 아레나를 담았습니다.
 
-- **[`FixedBlockPool`](FixedBlockPool.h)**: 같은 크기의 블록을 할당하고 반납합니다. 첫 할당 요청에서 풀 메모리를 확보하며, 반납된 블록이 없고 현재 풀도 다 썼다면 새 풀을 연결합니다.
-- **[`ObjectPool<T>`](ObjectPool.h)**: `FixedBlockPool`에 객체 생성·소멸을 연결한 클래스입니다. `New()`는 생성자 인자를 전달해 객체를 만들고, `Delete()`는 소멸자를 호출한 뒤 블록을 반납합니다.
-- **[`MemoryArena`](MemoryArena.h)**: 요청한 크기만큼 메모리를 순차적으로 할당합니다. 개별 반납 없이 `Reset()` 또는 소멸 시 확보한 풀을 모두 해제합니다. PBRT에서 본 구조를 참고해 만들었습니다.
+- [`FixedBlockPool`](FixedBlockPool.h): 같은 크기의 블록을 할당하고 반납합니다. 첫 할당 요청에서 풀 메모리를 확보하며, 반납된 블록이 없고 현재 풀도 다 썼다면 새 풀을 연결합니다.
+- [`ObjectPool<T>`](ObjectPool.h): `FixedBlockPool`에 객체 생성·소멸을 연결한 클래스입니다. `New()`는 생성자 인자를 전달해 객체를 만들고, `Delete()`는 소멸자를 호출한 뒤 블록을 반납합니다.
+- [`MemoryArena`](MemoryArena.h): 요청한 크기만큼 메모리를 순차적으로 할당합니다. 개별 반납 없이 `Reset()` 또는 소멸 시 확보한 풀을 모두 해제합니다. PBRT에서 본 구조를 참고해 만들었습니다.
 
 `FixedBlockPool::Free()`는 반납된 블록의 앞부분에 다음 빈 블록의 주소를 기록합니다. 이 연결을 빈 블록 목록인 free list로 관리하고, `Alloc()`에서 가장 최근에 반납한 블록부터 꺼내 씁니다. 블록 자체를 목록의 노드로 사용하므로 연결 정보를 위한 별도 할당이 필요하지 않습니다. 풀의 메모리는 `Reset()`이나 소멸 시 해제합니다.
 
@@ -26,7 +30,7 @@
 
 ## 사용 예제
 
-`ObjectPool`을 사용하면 메모리 확보와 함께 객체를 생성할 수 있습니다. 아래 예제는 `Particle`을 하나 생성해 사용한 뒤, 소멸시키고 그 블록을 풀에 반납합니다.
+헤더 전용이라 저장소의 헤더를 프로젝트에 추가하고 `ObjectPool.h`를 include하면 됩니다. `ObjectPool`을 사용하면 메모리 확보와 함께 객체를 생성할 수 있습니다. 아래 예제는 `Particle`을 하나 생성해 사용한 뒤, 소멸시키고 그 블록을 풀에 반납합니다.
 
 ```cpp
 #include <cstdio>
@@ -54,17 +58,6 @@ int main()
 
 `New()`로 만든 객체는 풀 소멸 전에 `Delete()`해야 합니다. 객체 풀은 살아 있는 객체 목록을 추적하지 않으므로, 풀을 소멸시켜도 남은 객체의 소멸자가 자동으로 호출되지는 않습니다.
 
-### 사용 조건
-
-동작 원리를 살펴보기 위한 최소 구현으로, 크기·정렬·수명의 관리는 호출자가 맡습니다.
-
-- **크기와 정렬:** 블록 크기는 정렬 후 `sizeof(void*)` 이상, 블록 정렬은 `alignof(void*)` 이상이어야 합니다. 정렬은 2의 거듭제곱, 풀당 블록 수는 양수여야 하며 크기 계산이 오버플로하지 않아야 합니다.
-- **반납:** 해당 풀에서 할당받아 아직 반납하지 않은 블록만 한 번 반납해야 합니다. 다른 풀의 포인터와 중복 반납은 검사하지 않으며, 반납한 블록의 데이터는 더 이상 사용할 수 없습니다.
-- **아레나 요청:** 요청 크기와 헤더·정렬 패딩이 내부 풀 하나에 들어가야 합니다. 단일 요청에 맞춰 풀 크기를 늘리는 기능은 없습니다.
-- **동시 접근:** 내부 동기화가 없으므로 같은 인스턴스에 대한 동시 접근은 외부에서 동기화해야 합니다.
-
-`FixedBlockPool`과 `MemoryArena`의 `Reset()` 또는 소멸 이후에는 기존 포인터가 무효가 됩니다. 그 메모리에 객체를 직접 생성했다면 필요한 소멸자도 메모리 해제 전에 호출해야 합니다. 기반 메모리 할당 실패의 복구와 객체 생성자 예외 시 블록 반환 처리는 제공하지 않습니다.
-
 ## 성능 비교
 
 할당 패턴을 바꾸어 가며 `malloc/free`와 비교했습니다. 아래는 포스팅에 기록한 기존 측정 결과입니다.
@@ -73,19 +66,47 @@ int main()
 - 블록 크기: 32바이트
 - 풀당 블록 수: 127개
 
-| 할당 패턴 | malloc/free | FixedBlockPool | 배율 |
-| --- | ---: | ---: | ---: |
-| 200만 회 할당 후 일괄 해제 | 144.851 ms | 18.704 ms | 7.74배 |
-| 할당 직후 해제 500만 회 반복 | 157.437 ms | 2.950 ms | 53.38배 |
-| 랜덤 할당·해제 혼합, 동시 생존 1만 개 | 145.569 ms | 47.004 ms | 3.10배 |
-| 사전 힙 파편화 + 프레임 단위 생성·즉시 소멸 | 136.961 ms | 6.558 ms | 20.88배 |
+<table width="100%">
+  <thead>
+    <tr>
+      <th align="left">할당 패턴</th>
+      <th align="right">malloc/free</th>
+      <th align="right">FixedBlockPool</th>
+      <th align="right">배율</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="left">200만 회 할당 후 일괄 해제</td>
+      <td align="right">144.851 ms</td>
+      <td align="right">18.704 ms</td>
+      <td align="right">7.74배</td>
+    </tr>
+    <tr>
+      <td align="left">할당 직후 해제 500만 회 반복</td>
+      <td align="right">157.437 ms</td>
+      <td align="right">2.950 ms</td>
+      <td align="right">53.38배</td>
+    </tr>
+    <tr>
+      <td align="left">랜덤 할당·해제 혼합, 동시 생존 1만 개</td>
+      <td align="right">145.569 ms</td>
+      <td align="right">47.004 ms</td>
+      <td align="right">3.10배</td>
+    </tr>
+    <tr>
+      <td align="left">사전 힙 파편화 + 프레임 단위 생성·즉시 소멸</td>
+      <td align="right">136.961 ms</td>
+      <td align="right">6.558 ms</td>
+      <td align="right">20.88배</td>
+    </tr>
+  </tbody>
+</table>
 
-배율은 `malloc/free`의 측정 시간을 `FixedBlockPool`의 측정 시간으로 나눈 값입니다. 할당 패턴에 따라 차이가 달라지며, 다른 실행 환경에서 같은 배율이 나온다는 뜻은 아닙니다.
-
-벤치마크 소스는 현재 저장소에 포함되어 있지 않습니다. 상세 시나리오와 당시 결과에 대한 해석은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에 정리했습니다.
+배율은 `malloc/free`의 측정 시간을 `FixedBlockPool`의 측정 시간으로 나눈 값입니다. 상세 시나리오와 결과에 대한 해석은 [포스팅](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)에 정리했습니다.
 
 ## 문서
 
 메모리 풀의 기본 개념부터 `FixedBlockPool`의 멤버와 할당·반납 코드, 정렬 계산을 차례로 살펴본 글입니다. `ObjectPool`과 `MemoryArena`에 대한 설명도 함께 담았습니다.
 
-[**메모리 풀에 대한 기본적인 개념과 구현**](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
+[메모리 풀에 대한 기본적인 개념과 구현](https://juggernautsensei.notion.site/3c5c3fb6c02f8041b2d5e177d24cab3d?source=copy_link)
